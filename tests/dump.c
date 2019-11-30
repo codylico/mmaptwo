@@ -1,19 +1,19 @@
 
-#include "../mmapio.h"
+#include "../mmaptwo.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
 #include <ctype.h>
 
 int main(int argc, char **argv) {
-  struct mmapio_i* mi;
+  struct mmaptwo_i* mi;
   char const* fname;
   if (argc < 5) {
     fputs("usage: dump (file) (mode) (offset) (length)\n", stderr);
     return EXIT_FAILURE;
   }
   fname = argv[1];
-  mi = mmapio_open(fname, argv[2],
+  mi = mmaptwo_open(fname, argv[2],
     (size_t)strtoul(argv[3],NULL,0),
     (size_t)strtoul(argv[4],NULL,0));
   if (mi == NULL) {
@@ -21,8 +21,8 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   } else {
     /* output the data */{
-      size_t len = mmapio_length(mi);
-      unsigned char* bytes = (unsigned char*)mmapio_acquire(mi);
+      size_t len = mmaptwo_length(mi);
+      unsigned char* bytes = (unsigned char*)mmaptwo_acquire(mi);
       if (bytes != NULL) {
         size_t i;
         if (len >= UINT_MAX-32)
@@ -47,12 +47,12 @@ int main(int argc, char **argv) {
           }
         }
         fputs("\n", stdout);
-        mmapio_release(mi, bytes);
+        mmaptwo_release(mi, bytes);
       } else {
         fprintf(stderr, "mapped file '%s' gives no bytes?\n", fname);
       }
     }
-    mmapio_close(mi);
+    mmaptwo_close(mi);
   }
   return EXIT_SUCCESS;
 }

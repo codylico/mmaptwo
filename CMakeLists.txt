@@ -1,23 +1,23 @@
 
 cmake_minimum_required(VERSION 3.0)
 
-project(mmapio C)
+project(mmaptwo C)
 
 option(BUILD_TESTING "Enable testing.")
 option(BUILD_SHARED_LIBS "Enable shared library construction.")
-set(MMAPIO_OS CACHE STRING "Target memory mapping API.")
+set(MMAPTWO_OS CACHE STRING "Target memory mapping API.")
 
-add_library(mmapio "mmapio.c" "mmapio.h")
-if (MMAPIO_OS GREATER -1)
-  target_compile_definitions(mmapio
-    PRIVATE "MMAPIO_OS=${MMAPIO_OS}")
-endif (MMAPIO_OS GREATER -1)
+add_library(mmaptwo "mmaptwo.c" "mmaptwo.h")
+if (MMAPTWO_OS GREATER -1)
+  target_compile_definitions(mmaptwo
+    PRIVATE "MMAPTWO_OS=${MMAPTWO_OS}")
+endif (MMAPTWO_OS GREATER -1)
 
 if (BUILD_TESTING)
-  add_executable(mmapio_dump "tests/dump.c")
-  target_link_libraries(mmapio_dump mmapio)
+  add_executable(mmaptwo_dump "tests/dump.c")
+  target_link_libraries(mmaptwo_dump mmaptwo)
 
-  add_executable(mmapio_config "tests/config.c")
-  target_link_libraries(mmapio_config mmapio)
+  add_executable(mmaptwo_config "tests/config.c")
+  target_link_libraries(mmaptwo_config mmaptwo)
 endif (BUILD_TESTING)
 

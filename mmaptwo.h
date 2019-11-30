@@ -1,22 +1,22 @@
 /*
- * \file mmapio.h
+ * \file mmaptwo.h
  * \brief Memory-mapped files
  * \author Cody Licorish (svgmovement@gmail.com)
  */
-#ifndef hg_MMapIO_mmapIo_H_
-#define hg_MMapIO_mmapIo_H_
+#ifndef hg_MMapTwo_mmapTwo_H_
+#define hg_MMapTwo_mmapTwo_H_
 
 #include <stddef.h>
 
-#ifdef MMAPIO_WIN32_DLL
-#  ifdef MMAPIO_WIN32_DLL_INTERNAL
-#    define MMAPIO_API __declspec(dllexport)
+#ifdef MMAPTWO_WIN32_DLL
+#  ifdef MMAPTWO_WIN32_DLL_INTERNAL
+#    define MMAPTWO_API __declspec(dllexport)
 #  else
-#    define MMAPIO_API __declspec(dllimport)
-#  endif /*MMAPIO_DLL_INTERNAL*/
+#    define MMAPTWO_API __declspec(dllimport)
+#  endif /*MMAPTWO_DLL_INTERNAL*/
 #else
-#  define MMAPIO_API
-#endif /*MMAPIO_WIN32_DLL*/
+#  define MMAPTWO_API
+#endif /*MMAPTWO_WIN32_DLL*/
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,67 +25,67 @@ extern "C" {
 /**
  * \brief Operating system identifier.
  */
-enum mmapio_os {
-  mmapio_os_none = 0,
-  mmapio_os_unix = 1,
-  mmapio_os_win32 = 2
+enum mmaptwo_os {
+  mmaptwo_os_none = 0,
+  mmaptwo_os_unix = 1,
+  mmaptwo_os_win32 = 2
 };
 
 /**
  * \brief File memory access modes.
  */
-enum mmapio_mode {
-  mmapio_mode_read = 0x72,
-  mmapio_mode_write = 0x77,
-  mmapio_mode_end = 0x65,
-  mmapio_mode_private = 0x70,
+enum mmaptwo_mode {
+  mmaptwo_mode_read = 0x72,
+  mmaptwo_mode_write = 0x77,
+  mmaptwo_mode_end = 0x65,
+  mmaptwo_mode_private = 0x70,
 
   /**
    * \note If not using bequeath, the caller of
-   *   \link mmapio::open \endlink, \link mmapio::u8open \endlink or
-   *   \link mmapio::wopen \endlink must give time for the function
+   *   \link mmaptwo::open \endlink, \link mmaptwo::u8open \endlink or
+   *   \link mmaptwo::wopen \endlink must give time for the function
    *   to return. Otherwise, the file descriptor of the mapped file
    *   may leak.
    */
-  mmapio_mode_bequeath = 0x71
+  mmaptwo_mode_bequeath = 0x71
 };
 
 /**
  * \brief Memory-mapped input-output interface.
  */
-struct mmapio_i {
+struct mmaptwo_i {
   /**
    * \brief Destructor; closes the file and frees the space.
    * \param m map instance
    */
-  void (*mmi_dtor)(struct mmapio_i* m);
+  void (*mmi_dtor)(struct mmaptwo_i* m);
   /**
    * \brief Acquire a lock to the space.
    * \param m map instance
    * \return pointer to locked space on success, NULL otherwise
    */
-  void* (*mmi_acquire)(struct mmapio_i* m);
+  void* (*mmi_acquire)(struct mmaptwo_i* m);
   /**
    * \brief Release a lock of the space.
    * \param m map instance
    * \param p pointer of region to release
    */
-  void (*mmi_release)(struct mmapio_i* m, void* p);
+  void (*mmi_release)(struct mmaptwo_i* m, void* p);
   /**
    * \brief Check the length of the mapped area.
    * \param m map instance
    * \return the length of the mapped region exposed by this interface
    */
-  size_t (*mmi_length)(struct mmapio_i const* m);
+  size_t (*mmi_length)(struct mmaptwo_i const* m);
 };
 
 /* BEGIN configurations */
 /**
  * \brief Check the library's target backend.
- * \return a \link mmapio_os \endlink value
+ * \return a \link mmaptwo_os \endlink value
  */
-MMAPIO_API
-int mmapio_get_os(void);
+MMAPTWO_API
+int mmaptwo_get_os(void);
 
 /**
  * \brief Check whether the library can handle possible race conditions
@@ -94,8 +94,8 @@ int mmapio_get_os(void);
  * \return nonzero if file bequeath prevention is race-proof, zero
  *   otherwise
  */
-MMAPIO_API
-int mmapio_check_bequeath_stop(void);
+MMAPTWO_API
+int mmaptwo_check_bequeath_stop(void);
 /* END   configurations */
 
 /* BEGIN helper functions */
@@ -103,32 +103,32 @@ int mmapio_check_bequeath_stop(void);
  * \brief Helper function closes the file.
  * \param m map instance
  */
-MMAPIO_API
-void mmapio_close(struct mmapio_i* m);
+MMAPTWO_API
+void mmaptwo_close(struct mmaptwo_i* m);
 
 /**
  * \brief Helper function acquires file data.
  * \param m map instance
  * \return pointer to locked space on success, NULL otherwise
  */
-MMAPIO_API
-void* mmapio_acquire(struct mmapio_i* m);
+MMAPTWO_API
+void* mmaptwo_acquire(struct mmaptwo_i* m);
 
 /**
  * \brief Helper function to release a lock of the space.
  * \param m map instance
  * \param p pointer of region to release
  */
-MMAPIO_API
-void mmapio_release(struct mmapio_i* m, void* p);
+MMAPTWO_API
+void mmaptwo_release(struct mmaptwo_i* m, void* p);
 
 /**
  * \brief Helper function to check the length of the space.
  * \param m map instance
  * \return the length of the space
  */
-MMAPIO_API
-size_t mmapio_length(struct mmapio_i const* m);
+MMAPTWO_API
+size_t mmaptwo_length(struct mmaptwo_i const* m);
 /* END   helper functions */
 
 /* BEGIN open functions */
@@ -144,8 +144,8 @@ size_t mmapio_length(struct mmapio_i const* m);
  * \note On Windows, this function uses `CreateFileA` directly.
  * \note On Unix, this function uses the `open` system call directly.
  */
-MMAPIO_API
-struct mmapio_i* mmapio_open
+MMAPTWO_API
+struct mmaptwo_i* mmaptwo_open
   (char const* nm, char const* mode, size_t sz, size_t off);
 
 /**
@@ -161,8 +161,8 @@ struct mmapio_i* mmapio_open
  *   UTF-8 to UTF-16, then uses `CreateFileW` on the result.
  * \note On Unix, this function uses the `open` system call directly.
  */
-MMAPIO_API
-struct mmapio_i* mmapio_u8open
+MMAPTWO_API
+struct mmaptwo_i* mmaptwo_u8open
   (unsigned char const* nm, char const* mode, size_t sz, size_t off);
 
 /**
@@ -179,8 +179,8 @@ struct mmapio_i* mmapio_u8open
  *   to a multibyte character string, then passes the result to
  *   the `open` system call. Use `setlocale` in advance if necessary.
  */
-MMAPIO_API
-struct mmapio_i* mmapio_wopen
+MMAPTWO_API
+struct mmaptwo_i* mmaptwo_wopen
   (wchar_t const* nm, char const* mode, size_t sz, size_t off);
 /* END   open functions */
 
@@ -188,5 +188,5 @@ struct mmapio_i* mmapio_wopen
 };
 #endif /*__cplusplus*/
 
-#endif /*hg_MMapIO_mmapIo_H_*/
+#endif /*hg_MMapTwo_mmapTwo_H_*/
 
