@@ -7,9 +7,10 @@
 
 int main(int argc, char **argv) {
   struct mmaptwo_i* mi;
+  struct mmaptwo_page_i* pager;
   char const* fname;
   if (argc < 5) {
-    fputs("usage: dump (file) (mode) (offset) (length)\n", stderr);
+    fputs("usage: dump (file) (mode) (length) (offset)\n", stderr);
     return EXIT_FAILURE;
   }
   fname = argv[1];
@@ -17,12 +18,19 @@ int main(int argc, char **argv) {
     (size_t)strtoul(argv[3],NULL,0),
     (size_t)strtoul(argv[4],NULL,0));
   if (mi == NULL) {
+    fprintf(stderr, "failed to open file '%s'\n", fname);
+    return EXIT_FAILURE;
+  } else {
+    pager = mmaptwo_acquire(mi, mmaptwo_length(mi), 0);
+  }
+  if (pager == NULL) {
     fprintf(stderr, "failed to map file '%s'\n", fname);
+    mmaptwo_close(mi);
     return EXIT_FAILURE;
   } else {
     /* output the data */{
-      size_t len = mmaptwo_length(mi);
-      unsigned char* bytes = (unsigned char*)mmaptwo_acquire(mi);
+      size_t len = mmaptwo_page_length(pager);
+      unsigned char* bytes = (unsigned char*)mmaptwo_page_get(pager);
       if (bytes != NULL) {
         size_t i;
         if (len >= UINT_MAX-32)
@@ -47,13 +55,13 @@ int main(int argc, char **argv) {
           }
         }
         fputs("\n", stdout);
-        mmaptwo_release(mi, bytes);
       } else {
         fprintf(stderr, "mapped file '%s' gives no bytes?\n", fname);
       }
     }
-    mmaptwo_close(mi);
+    mmaptwo_page_close(pager);
   }
+  mmaptwo_close(mi);
   return EXIT_SUCCESS;
 }
 

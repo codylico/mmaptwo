@@ -56,10 +56,18 @@ static struct mmaptwo_mode_tag mmaptwo_mode_parse(char const* mmode);
 
 struct mmaptwo_unix {
   struct mmaptwo_i base;
+  size_t len;
+  size_t offnum;
+  int fd;
+  struct mmaptwo_mode_tag mt;
+};
+
+struct mmaptwo_page_unix {
+  struct mmaptwo_page_i base;
   void* ptr;
   size_t len;
   size_t shift;
-  int fd;
+  size_t offnum;
 };
 
 /**
@@ -107,33 +115,6 @@ static size_t mmaptwo_file_size_e(int fd);
  */
 static struct mmaptwo_i* mmaptwo_open_rest
   (int fd, struct mmaptwo_mode_tag const mmode, size_t sz, size_t off);
-
-/**
- * \brief Destructor; closes the file and frees the space.
- * \param m map instance
- */
-static void mmaptwo_mmi_dtor(struct mmaptwo_i* m);
-
-/**
- * \brief Acquire a lock to the space.
- * \param m map instance
- * \return pointer to locked space on success, NULL otherwise
- */
-static void* mmaptwo_mmi_acquire(struct mmaptwo_i* m);
-
-/**
- * \brief Release a lock of the space.
- * \param m map instance
- * \param p pointer of region to release
- */
-static void mmaptwo_mmi_release(struct mmaptwo_i* m, void* p);
-
-/**
- * \brief Check the length of the mapped area.
- * \param m map instance
- * \return the length of the mapped region exposed by this interface
- */
-static size_t mmaptwo_mmi_length(struct mmaptwo_i const* m);
 #elif MMAPTWO_OS == MMAPTWO_OS_WIN32
 #  define WIN32_LEAN_AND_MEAN
 #  include <windows.h>
@@ -206,34 +187,74 @@ static DWORD mmaptwo_mode_prot_cvt(int mmode);
  * \return a `MapViewOfFile` desired access flag on success, zero otherwise
  */
 static DWORD mmaptwo_mode_access_cvt(struct mmaptwo_mode_tag const mt);
+#endif /*MMAPTWO_OS*/
 
 /**
  * \brief Destructor; closes the file and frees the space.
  * \param m map instance
  */
-static void mmaptwo_mmi_dtor(struct mmaptwo_i* m);
+static void mmaptwo_mmt_dtor(struct mmaptwo_i* m);
 
 /**
- * \brief Acquire a lock to the space.
- * \param m map instance
- * \return pointer to locked space on success, NULL otherwise
+ * \brief Destructor; closes the page and frees the space.
+ * \param p page instance
  */
-static void* mmaptwo_mmi_acquire(struct mmaptwo_i* m);
+static void mmaptwo_mmtp_dtor(struct mmaptwo_page_i* p);
 
 /**
- * \brief Release a lock of the space.
+ * \brief Acquire a page of the space.
  * \param m map instance
- * \param p pointer of region to release
+ * \param sz size of page instance to request
+ * \param off offset of page from start of map instance
+ * \return pointer to page instance on success, NULL otherwise
  */
-static void mmaptwo_mmi_release(struct mmaptwo_i* m, void* p);
+static struct mmaptwo_page_i* mmaptwo_mmt_acquire
+  (struct mmaptwo_i* m, size_t sz, size_t off);
 
 /**
- * \brief Check the length of the mapped area.
+ * \brief Check the length of the mappable area.
  * \param m map instance
  * \return the length of the mapped region exposed by this interface
  */
-static size_t mmaptwo_mmi_length(struct mmaptwo_i const* m);
-#endif /*MMAPTWO_OS*/
+static size_t mmaptwo_mmt_length(struct mmaptwo_i const* m);
+
+/**
+ * \brief Check the length of the mapped area.
+ * \param p page instance
+ * \return the length of the mapped region exposed by this interface
+ */
+static size_t mmaptwo_mmtp_length(struct mmaptwo_page_i const* p);
+
+/**
+ * \brief Check the offset of the mappable area.
+ * \param m map instance
+ * \return the offset of the mappable exposed by this interface, from start
+ *   of file
+ */
+static size_t mmaptwo_mmt_offset(struct mmaptwo_i const* m);
+
+/**
+ * \brief Check the offset of the mapped area.
+ * \param p page instance
+ * \return the offset of the mapped region exposed by this interface,
+ *   from start of mappable
+ */
+static size_t mmaptwo_mmtp_offset(struct mmaptwo_page_i const* p);
+
+/**
+ * \brief Get the start of the mapped area.
+ * \param p page instance
+ * \return a pointer to the start of the requested mapped area
+ */
+static void* mmaptwo_mmtp_get(struct mmaptwo_page_i* p);
+
+/**
+ * \brief Get the start of the mapped area.
+ * \param p page instance
+ * \return a pointer to the start of the requested mapped area
+ */
+static void const* mmaptwo_mmtp_getconst(struct mmaptwo_page_i const* p);
+
 
 /* BEGIN static functions */
 struct mmaptwo_mode_tag mmaptwo_mode_parse(char const* mmode) {
@@ -341,10 +362,6 @@ struct mmaptwo_i* mmaptwo_open_rest
   (int fd, struct mmaptwo_mode_tag const mt, size_t sz, size_t off)
 {
   struct mmaptwo_unix *const out = calloc(1, sizeof(struct mmaptwo_unix));
-  void *ptr;
-  size_t fullsize;
-  size_t fullshift;
-  off_t fulloff;
   if (out == NULL) {
     close(fd);
     return NULL;
@@ -371,6 +388,75 @@ struct mmaptwo_i* mmaptwo_open_rest
       sz = 0 /*to fail*/;
     else sz = xsz-off;
   }
+  if (sz == 0)/* then fail */ {
+    close(fd);
+    free(out);
+    errno = EDOM;
+    return NULL;
+  }
+  /* initialize the interface */{
+    out->len = sz;
+    out->fd = fd;
+    out->offnum = off;
+    out->mt = mt;
+    out->base.mmt_dtor = &mmaptwo_mmt_dtor;
+    out->base.mmt_acquire = &mmaptwo_mmt_acquire;
+    out->base.mmt_offset = &mmaptwo_mmt_offset;
+    out->base.mmt_length = &mmaptwo_mmt_length;
+  }
+  return (struct mmaptwo_i*)out;
+}
+
+void mmaptwo_mmt_dtor(struct mmaptwo_i* m) {
+  struct mmaptwo_unix* const mu = (struct mmaptwo_unix*)m;
+  close(mu->fd);
+  mu->fd = -1;
+  free(mu);
+  return;
+}
+
+void mmaptwo_mmtp_dtor(struct mmaptwo_page_i* p) {
+  struct mmaptwo_page_unix* const pu = (struct mmaptwo_page_unix*)p;
+  munmap(pu->ptr, pu->len);
+  pu->ptr = NULL;
+  free(pu);
+  return;
+}
+
+void* mmaptwo_mmtp_get(struct mmaptwo_page_i* p) {
+  struct mmaptwo_page_unix* const pu = (struct mmaptwo_page_unix*)p;
+  return pu->ptr+pu->shift;
+}
+void const* mmaptwo_mmtp_getconst(struct mmaptwo_page_i const* p) {
+  struct mmaptwo_page_unix const* const pu =
+    (struct mmaptwo_page_unix const*)p;
+  return pu->ptr+pu->shift;
+}
+
+struct mmaptwo_page_i* mmaptwo_mmt_acquire
+  (struct mmaptwo_i* m, size_t sz, size_t pre_off)
+{
+  struct mmaptwo_unix* const mu = (struct mmaptwo_unix*)m;
+  size_t off;
+  struct mmaptwo_page_unix* out;
+  size_t fullsize;
+  size_t fullshift;
+  void *ptr;
+  off_t fulloff;
+  /* repair input size and offset */{
+    if (pre_off > mu->len
+    ||  sz > mu->len - pre_off
+    ||  sz == 0u)
+    {
+      errno = EDOM;
+      return NULL;
+    }
+    off = pre_off + mu->offnum;
+  }
+  out = calloc(1,sizeof(struct mmaptwo_page_unix));
+  if (out == NULL) {
+    /* give up, and */return NULL;
+  }
   /* fix to page sizes */{
     long const psize = sysconf(_SC_PAGE_SIZE);
     fullsize = sz;
@@ -380,55 +466,52 @@ struct mmaptwo_i* mmaptwo_open_rest
       fulloff = (off_t)(off-fullshift);
       if (fullshift >= ((~(size_t)0u)-sz)) {
         /* range fix failure */
-        close(fd);
         free(out);
         errno = ERANGE;
         return NULL;
       } else fullsize += fullshift;
     } else fulloff = (off_t)off;
   }
-  ptr = mmap(NULL, fullsize, mmaptwo_mode_prot_cvt(mt.mode),
-       mmaptwo_mode_flag_cvt(mt.privy), fd, fulloff);
+  ptr = mmap(NULL, fullsize, mmaptwo_mode_prot_cvt(mu->mt.mode),
+       mmaptwo_mode_flag_cvt(mu->mt.privy), mu->fd, fulloff);
   if (ptr == NULL) {
-    close(fd);
     free(out);
     return NULL;
   }
   /* initialize the interface */{
     out->ptr = ptr;
     out->len = fullsize;
-    out->fd = fd;
     out->shift = fullshift;
-    out->base.mmi_dtor = &mmaptwo_mmi_dtor;
-    out->base.mmi_acquire = &mmaptwo_mmi_acquire;
-    out->base.mmi_release = &mmaptwo_mmi_release;
-    out->base.mmi_length = &mmaptwo_mmi_length;
+    out->offnum = pre_off;
+    out->base.mmtp_dtor = &mmaptwo_mmtp_dtor;
+    out->base.mmtp_get = &mmaptwo_mmtp_get;
+    out->base.mmtp_getconst = &mmaptwo_mmtp_getconst;
+    out->base.mmtp_offset = &mmaptwo_mmtp_offset;
+    out->base.mmtp_length = &mmaptwo_mmtp_length;
   }
-  return (struct mmaptwo_i*)out;
+  return (struct mmaptwo_page_i*)out;
 }
 
-void mmaptwo_mmi_dtor(struct mmaptwo_i* m) {
-  struct mmaptwo_unix* const mu = (struct mmaptwo_unix*)m;
-  munmap(mu->ptr, mu->len);
-  mu->ptr = NULL;
-  close(mu->fd);
-  mu->fd = -1;
-  free(mu);
-  return;
+size_t mmaptwo_mmt_length(struct mmaptwo_i const* m) {
+  struct mmaptwo_unix const* const mu = (struct mmaptwo_unix const*)m;
+  return mu->len;
 }
 
-void* mmaptwo_mmi_acquire(struct mmaptwo_i* m) {
-  struct mmaptwo_unix* const mu = (struct mmaptwo_unix*)m;
-  return mu->ptr+mu->shift;
+size_t mmaptwo_mmtp_length(struct mmaptwo_page_i const* p) {
+  struct mmaptwo_page_unix const* const pu =
+    (struct mmaptwo_page_unix const*)p;
+  return pu->len-pu->shift;
 }
 
-void mmaptwo_mmi_release(struct mmaptwo_i* m, void* p) {
-  return;
+size_t mmaptwo_mmt_offset(struct mmaptwo_i const* m) {
+  struct mmaptwo_unix const* const mu = (struct mmaptwo_unix const*)m;
+  return mu->offnum;
 }
 
-size_t mmaptwo_mmi_length(struct mmaptwo_i const* m) {
-  struct mmaptwo_unix* const mu = (struct mmaptwo_unix*)m;
-  return mu->len-mu->shift;
+size_t mmaptwo_mmtp_offset(struct mmaptwo_page_i const* p) {
+  struct mmaptwo_page_unix const* const pu =
+    (struct mmaptwo_page_unix const*)p;
+  return pu->offnum;
 }
 #elif MMAPTWO_OS == MMAPTWO_OS_WIN32
 DWORD mmaptwo_mode_rw_cvt(int mmode) {
@@ -745,25 +828,63 @@ int mmaptwo_check_bequeath_stop(void) {
   return -1;
 #endif /*MMAPTWO_OS*/
 }
+
+size_t mmaptwo_get_page_size(void) {
+#if MMAPTWO_OS == MMAPTWO_OS_UNIX
+  return (size_t)(sysconf(_SC_PAGE_SIZE));
+#elif MMAPTWO_OS == MMAPTWO_OS_WIN32
+  SYSTEM_INFO s_info;
+  GetSystemInfo(&s_info);
+  return (size_t)(s_info.dwAllocationGranularity);
+#else
+  return 1;
+#endif /*MMAPTWO_OS*/
+}
 /* END   configuration functions */
 
 /* BEGIN helper functions */
+void mmaptwo_page_close(struct mmaptwo_page_i* p) {
+  if (p != NULL) {
+    (*p).mmtp_dtor(p);
+  }
+  return;
+}
+
+void* mmaptwo_page_get(struct mmaptwo_page_i* p) {
+  return (*p).mmtp_get(p);
+}
+
+void const* mmaptwo_page_get_const(struct mmaptwo_page_i const* p) {
+  return (*p).mmtp_getconst(p);
+}
+
+size_t mmaptwo_page_length(struct mmaptwo_page_i const* p) {
+  return (*p).mmtp_length(p);
+}
+
+size_t mmaptwo_page_offset(struct mmaptwo_page_i const* p) {
+  return (*p).mmtp_offset(p);
+}
+
 void mmaptwo_close(struct mmaptwo_i* m) {
-  (*m).mmi_dtor(m);
+  if (m != NULL) {
+    (*m).mmt_dtor(m);
+  }
   return;
 }
 
-void* mmaptwo_acquire(struct mmaptwo_i* m) {
-  return (*m).mmi_acquire(m);
-}
-
-void mmaptwo_release(struct mmaptwo_i* m, void* p) {
-  (*m).mmi_release(m,p);
-  return;
+struct mmaptwo_page_i* mmaptwo_acquire
+  (struct mmaptwo_i* m, size_t siz, size_t off)
+{
+  return (*m).mmt_acquire(m, siz, off);
 }
 
 size_t mmaptwo_length(struct mmaptwo_i const* m) {
-  return (*m).mmi_length(m);
+  return (*m).mmt_length(m);
+}
+
+size_t mmaptwo_offset(struct mmaptwo_i const* m) {
+  return (*m).mmt_offset(m);
 }
 /* END   helper functions */
 
