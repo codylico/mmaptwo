@@ -123,11 +123,20 @@ static struct mmaptwo_i* mmaptwo_open_rest
 
 struct mmaptwo_win32 {
   struct mmaptwo_i base;
-  void* ptr;
   size_t len;
   size_t shift;
   HANDLE fmd;
   HANDLE fd;
+  size_t offnum;
+  struct mmaptwo_mode_tag mt;
+};
+
+struct mmaptwo_page_win32 {
+  struct mmaptwo_page_i base;
+  void* ptr;
+  size_t len;
+  size_t shift;
+  size_t offnum;
 };
 
 /**
@@ -136,6 +145,14 @@ struct mmaptwo_win32 {
  * \return an `CreateFile.` desired access flag on success, zero otherwise
  */
 static DWORD mmaptwo_mode_rw_cvt(int mmode);
+
+/**
+ * \brief Convert a mmaptwo mode text to a `CreateFile.`
+ *   creation disposition.
+ * \param mmode the value to convert
+ * \return a `CreateFile.` creation disposition on success, zero otherwise
+ */
+static DWORD mode_disposition_cvt(int mmode);
 
 /**
  * \brief Convert UTF-8 encoded text to UTF-16 LE text.
@@ -525,6 +542,17 @@ DWORD mmaptwo_mode_rw_cvt(int mmode) {
   }
 }
 
+DWORD mmaptwo_mode_disposition_cvt(int mmode) {
+  switch (mmode) {
+  case mmaptwo_mode_write:
+    return OPEN_ALWAYS;
+  case mmaptwo_mode_read:
+    return OPEN_EXISTING;
+  default:
+    return 0;
+  }
+}
+
 int mmaptwo_u8towc_shim
   (unsigned char const* nm, wchar_t* out, size_t* outlen)
 {
@@ -706,7 +734,7 @@ struct mmaptwo_i* mmaptwo_open_rest
     fullsize = sz;
     if (psize > 0) {
       /* adjust the offset */
-      fullshift = off%psize;
+      fullshift = off;
       fulloff = (off-fullshift);
       if (fullshift >= ((~(size_t)0u)-sz)) {
         /* range fix failure */
@@ -732,6 +760,15 @@ struct mmaptwo_i* mmaptwo_open_rest
     cfmsa.lpSecurityDescriptor = NULL;
     cfmsa.bInheritHandle = (BOOL)(mt.bequeath ? TRUE : FALSE);
   }
+  /* check for potential overflow */{
+    if (fulloff >= ((~(size_t)0u)-extended_size)) {
+      /* range fix failure */
+      CloseHandle(fd);
+      free(out);
+      errno = ERANGE;
+      return NULL;
+    }
+  }
   /* create the file mapping object */{
     /*
      * clamp size to end of file;
@@ -755,37 +792,106 @@ struct mmaptwo_i* mmaptwo_open_rest
     free(out);
     return NULL;
   }
+  /* initialize the interface */{
+    out->len = fullsize;
+    out->fd = fd;
+    out->fmd = fmd;
+    out->shift = fullshift;
+    out->offnum = off;
+    out->mt = mt;
+    out->base.mmt_dtor = &mmaptwo_mmt_dtor;
+    out->base.mmt_acquire = &mmaptwo_mmt_acquire;
+    out->base.mmt_offset = &mmaptwo_mmt_offset;
+    out->base.mmt_length = &mmaptwo_mmt_length;
+  }
+  return (struct mmaptwo_i*)out;
+}
+
+struct mmaptwo_page_i* mmaptwo_mmt_acquire
+  (struct mmaptwo_i* m, size_t sz, size_t pre_off)
+{
+  struct mmaptwo_win32* const mu = (struct mmaptwo_win32*)m;
+  struct mmaptwo_page_win32* out;
+  size_t fullsize;
+  size_t off;
+  size_t fullshift;
+  void *ptr;
+  size_t fulloff;
+  out = calloc(1, sizeof(struct mmaptwo_page_win32));
+  if (out == NULL) {
+    return NULL;
+  }
+  /* repair input size and offset */{
+    size_t const shifted_len = mu->len - mu->shift;
+    if (pre_off > shifted_len
+    ||  sz > shifted_len - pre_off
+    ||  sz == 0u)
+    {
+      errno = EDOM;
+      return NULL;
+    }
+    off = pre_off + mu->offnum;
+  }
+  /* compute new offsets */{
+    DWORD psize;
+    /* get the allocation granularity */{
+      SYSTEM_INFO s_info;
+      GetSystemInfo(&s_info);
+      psize = s_info.dwAllocationGranularity;
+    }
+    fullsize = sz;
+    if (psize > 0) {
+      /* adjust the offset */
+      fullshift = off%psize;
+      fulloff = (off-fullshift);
+      if (fullshift >= ((~(size_t)0u)-sz)) {
+        /* range fix failure */
+        free(out);
+        errno = ERANGE;
+        return NULL;
+      } else fullsize += fullshift;
+    } else {
+      fulloff = off;
+    }
+  }
+  /* adjust backward to file-mapping object */{
+    fulloff -= (mu->offnum - mu->shift);
+  }
   ptr = MapViewOfFile(
-      fmd, /*hFileMappingObject*/
-      mmaptwo_mode_access_cvt(mt), /*dwDesiredAccess*/
+      mu->fmd, /*hFileMappingObject*/
+      mmaptwo_mode_access_cvt(mu->mt), /*dwDesiredAccess*/
       (DWORD)((fulloff>>32)&0xFFffFFff), /* dwFileOffsetHigh */
       (DWORD)(fulloff&0xFFffFFff), /* dwFileOffsetLow */
       (SIZE_T)(fullsize) /* dwNumberOfBytesToMap */
     );
   if (ptr == NULL) {
-    CloseHandle(fmd);
-    CloseHandle(fd);
     free(out);
     return NULL;
   }
   /* initialize the interface */{
     out->ptr = ptr;
     out->len = fullsize;
-    out->fd = fd;
-    out->fmd = fmd;
+    out->offnum = pre_off;
     out->shift = fullshift;
-    out->base.mmi_dtor = &mmaptwo_mmi_dtor;
-    out->base.mmi_acquire = &mmaptwo_mmi_acquire;
-    out->base.mmi_release = &mmaptwo_mmi_release;
-    out->base.mmi_length = &mmaptwo_mmi_length;
+    out->base.mmtp_dtor = &mmaptwo_mmtp_dtor;
+    out->base.mmtp_get = &mmaptwo_mmtp_get;
+    out->base.mmtp_getconst = &mmaptwo_mmtp_getconst;
+    out->base.mmtp_length = &mmaptwo_mmtp_length;
+    out->base.mmtp_offset = &mmaptwo_mmtp_offset;
   }
-  return (struct mmaptwo_i*)out;
+  return (struct mmaptwo_page_i*)out;
 }
 
-void mmaptwo_mmi_dtor(struct mmaptwo_i* m) {
-  struct mmaptwo_win32* const mu = (struct mmaptwo_win32*)m;
+void mmaptwo_mmtp_dtor(struct mmaptwo_page_i* m) {
+  struct mmaptwo_page_win32* const mu = (struct mmaptwo_page_win32*)m;
   UnmapViewOfFile(mu->ptr);
   mu->ptr = NULL;
+  free(mu);
+  return;
+}
+
+void mmaptwo_mmt_dtor(struct mmaptwo_i* m) {
+  struct mmaptwo_win32* const mu = (struct mmaptwo_win32*)m;
   CloseHandle(mu->fmd);
   mu->fmd = NULL;
   CloseHandle(mu->fd);
@@ -794,18 +900,32 @@ void mmaptwo_mmi_dtor(struct mmaptwo_i* m) {
   return;
 }
 
-void* mmaptwo_mmi_acquire(struct mmaptwo_i* m) {
+size_t mmaptwo_mmt_offset(struct mmaptwo_i const* m) {
   struct mmaptwo_win32* const mu = (struct mmaptwo_win32*)m;
-  return mu->ptr+mu->shift;
+  return mu->offnum;
+}
+size_t mmaptwo_mmtp_offset(struct mmaptwo_page_i const* m) {
+  struct mmaptwo_page_win32* const mu = (struct mmaptwo_page_win32*)m;
+  return mu->offnum;
 }
 
-void mmaptwo_mmi_release(struct mmaptwo_i* m, void* p) {
-  return;
-}
-
-size_t mmaptwo_mmi_length(struct mmaptwo_i const* m) {
+size_t mmaptwo_mmt_length(struct mmaptwo_i const* m) {
   struct mmaptwo_win32* const mu = (struct mmaptwo_win32*)m;
   return mu->len-mu->shift;
+}
+size_t mmaptwo_mmtp_length(struct mmaptwo_page_i const* m) {
+  struct mmaptwo_page_win32* const mu = (struct mmaptwo_page_win32*)m;
+  return mu->len-mu->shift;
+}
+
+void* mmaptwo_mmtp_get(struct mmaptwo_page_i* p) {
+  struct mmaptwo_page_win32* const pu = (struct mmaptwo_page_win32*)p;
+  return pu->ptr+pu->shift;
+}
+void const* mmaptwo_mmtp_getconst(struct mmaptwo_page_i const* p) {
+  struct mmaptwo_page_win32 const* const pu =
+    (struct mmaptwo_page_win32 const*)p;
+  return pu->ptr+pu->shift;
 }
 #endif /*MMAPTWO_OS*/
 /* END   static functions */
@@ -947,7 +1067,7 @@ struct mmaptwo_i* mmaptwo_open
       nm, mmaptwo_mode_rw_cvt(mt.mode),
       FILE_SHARE_READ|FILE_SHARE_WRITE,
       &cfsa,
-      OPEN_ALWAYS,
+      mmaptwo_mode_disposition_cvt(mt.mode),
       FILE_ATTRIBUTE_NORMAL,
       NULL
     );
@@ -976,7 +1096,7 @@ struct mmaptwo_i* mmaptwo_u8open
       wcfn, mmaptwo_mode_rw_cvt(mt.mode),
       FILE_SHARE_READ|FILE_SHARE_WRITE,
       &cfsa,
-      OPEN_ALWAYS,
+      mmaptwo_mode_disposition_cvt(mt.mode),
       FILE_ATTRIBUTE_NORMAL,
       NULL
     );
@@ -1001,7 +1121,7 @@ struct mmaptwo_i* mmaptwo_wopen
       nm, mmaptwo_mode_rw_cvt(mt.mode),
       FILE_SHARE_READ|FILE_SHARE_WRITE,
       &cfsa,
-      OPEN_ALWAYS,
+      mmaptwo_mode_disposition_cvt(mt.mode),
       FILE_ATTRIBUTE_NORMAL,
       NULL
     );

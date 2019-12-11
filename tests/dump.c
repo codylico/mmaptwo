@@ -10,7 +10,11 @@ int main(int argc, char **argv) {
   struct mmaptwo_page_i* pager;
   char const* fname;
   if (argc < 5) {
-    fputs("usage: dump (file) (mode) (length) (offset)\n", stderr);
+    fputs("usage: dump (file) (mode) (length) (offset) [...]\n"
+        "optional arguments [...]:\n"
+        "  [sublen] [suboff]\n"
+        "        Length and offset for page. Defaults\n"
+        "        to full extent of mappable.", stderr);
     return EXIT_FAILURE;
   }
   fname = argv[1];
@@ -21,7 +25,13 @@ int main(int argc, char **argv) {
     fprintf(stderr, "failed to open file '%s'\n", fname);
     return EXIT_FAILURE;
   } else {
-    pager = mmaptwo_acquire(mi, mmaptwo_length(mi), 0);
+    size_t sub_len = (argc>5)
+      ? (size_t)strtoul(argv[5],NULL,0)
+      : mmaptwo_length(mi);
+    size_t sub_off = (argc>6)
+      ? (size_t)strtoul(argv[6],NULL,0)
+      : 0;
+    pager = mmaptwo_acquire(mi, sub_len, sub_off);
   }
   if (pager == NULL) {
     fprintf(stderr, "failed to map file '%s'\n", fname);
@@ -30,6 +40,7 @@ int main(int argc, char **argv) {
   } else {
     /* output the data */{
       size_t len = mmaptwo_page_length(pager);
+      size_t const off = mmaptwo_page_offset(pager);
       unsigned char* bytes = (unsigned char*)mmaptwo_page_get(pager);
       if (bytes != NULL) {
         size_t i;
@@ -37,7 +48,8 @@ int main(int argc, char **argv) {
           len = UINT_MAX-32;
         for (i = 0; i < len; i+=16) {
           size_t j = 0;
-          fprintf(stdout, "%s%4lx:", i?"\n":"", (long unsigned int)i);
+          fprintf(stdout, "%s%4lx:", i?"\n":"",
+             (long unsigned int)(i+off));
           for (j = 0; j < 16; ++j) {
             if (j%4 == 0) {
               fputs(" ", stdout);
