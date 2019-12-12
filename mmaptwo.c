@@ -12,16 +12,24 @@
 #  define MMAPTWO_MAX_CACHE 1048576
 #endif /*MMAPTWO_MAX_CACHE*/
 
+/**
+ * \brief Mode tag for mmaptwo interface, holding various
+ *   mapping configuration values.
+ */
 struct mmaptwo_mode_tag {
+  /** \brief access mode (readonly, read-write) */
   char mode;
+  /** \brief map-to-end-of-file flag */
   char end;
+  /** \brief flag for activating private mapping */
   char privy;
+  /** \brief flag for enabling access from child processes */
   char bequeath;
 };
 
 /**
  * \brief Extract a mmaptwo mode tag from a mode text.
- * \param mmode the value to parse
+ * \param mmode the text to parse
  * \return a mmaptwo mode tag
  */
 static struct mmaptwo_mode_tag mmaptwo_mode_parse(char const* mmode);
@@ -54,45 +62,61 @@ static struct mmaptwo_mode_tag mmaptwo_mode_parse(char const* mmode);
 #  include <sys/stat.h>
 #  include <errno.h>
 
+/**
+ * \brief File handler structure for POSIX mmaptwo implementation.
+ */
 struct mmaptwo_unix {
+  /** \brief base structure */
   struct mmaptwo_i base;
+  /** \brief length of space */
   size_t len;
+  /** \brief offset from start of file to user-requested source */
   size_t offnum;
+  /** \brief file descriptor */
   int fd;
+  /** \brief open attributes */
   struct mmaptwo_mode_tag mt;
 };
 
+/**
+ * \brief Page handler structure for POSIX mmaptwo implementation.
+ */
 struct mmaptwo_page_unix {
+  /** \brief base structure */
   struct mmaptwo_page_i base;
+  /** \brief `mmap` pointer */
   void* ptr;
+  /** \brief length of space */
   size_t len;
+  /** \brief offset from `ptr` to start of user-requested space */
   size_t shift;
+  /** \brief offset from start of source to user-requested space */
   size_t offnum;
 };
 
 /**
  * \brief Convert a wide string to a multibyte string.
  * \param nm the string to convert
- * \return a multibyte string on success, NULL otherwise
+ * \return a multibyte string on success, `NULL` otherwise
  */
 static char* mmaptwo_wctomb(wchar_t const* nm);
 
 /**
- * \brief Convert a mmaptwo mode text to a POSIX `open` flag.
- * \param mmode the value to convert
+ * \brief Convert a mmaptwo mode character to a POSIX `open` flag.
+ * \param mmode the character to convert
  * \return an `open` flag on success, zero otherwise
  */
 static int mmaptwo_mode_rw_cvt(int mmode);
 
 /**
- * \brief Convert a mmaptwo mode text to a POSIX `mmap` protection flag.
- * \param mmode the value to convert
+ * \brief Convert a mmaptwo mode character to a POSIX `mmap` protection flag.
+ * \param mmode the character to convert
  * \return an `mmap` protection flag on success, zero otherwise
  */
 static int mmaptwo_mode_prot_cvt(int mmode);
 
 /**
- * \brief Convert a mmaptwo mode text to a POSIX `mmap` others' flag.
+ * \brief Convert a mmaptwo mode character to a POSIX `mmap` others' flag.
  * \param mprivy the private flag to convert
  * \return an `mmap` others' flag on success, zero otherwise
  */
@@ -108,7 +132,7 @@ static size_t mmaptwo_file_size_e(int fd);
 /**
  * \brief Finish preparing a memory map interface.
  * \param fd file descriptor
- * \param mmode mode text
+ * \param mmode mode tag
  * \param sz size of range to map
  * \param off offset from start of file
  * \return an interface on success, NULL otherwise
@@ -121,35 +145,54 @@ static struct mmaptwo_i* mmaptwo_open_rest
 #  include <limits.h>
 #  include <errno.h>
 
+/**
+ * \brief File handler structure for Win32 API mmaptwo implementation.
+ */
 struct mmaptwo_win32 {
+  /** \brief base structure */
   struct mmaptwo_i base;
+  /** \brief length of space, including unrequested leading bytes */
   size_t len;
+  /** \brief number of unrequested leading bytes. */
   size_t shift;
+  /** \brief file mapping handle */
   HANDLE fmd;
+  /** \brief file handle */
   HANDLE fd;
+  /** \brief user-requested offset from start of file */
   size_t offnum;
+  /** \brief open attributes */
   struct mmaptwo_mode_tag mt;
 };
 
+/**
+ * \brief Page handler structure for Win32 API mmaptwo implementation.
+ */
 struct mmaptwo_page_win32 {
+  /** \brief base structure */
   struct mmaptwo_page_i base;
+  /** \brief `MapViewOfFile` pointer */
   void* ptr;
+  /** \brief length of space */
   size_t len;
+  /** \brief offset from `ptr` to start of user-requested space */
   size_t shift;
+  /** \brief user-requested offset from start of source */
   size_t offnum;
 };
 
 /**
- * \brief Convert a mmaptwo mode text to a `CreateFile.` desired access flag.
- * \param mmode the value to convert
+ * \brief Convert a mmaptwo mode character to a `CreateFile.`
+ *   desired access flag.
+ * \param mmode the character to convert
  * \return an `CreateFile.` desired access flag on success, zero otherwise
  */
 static DWORD mmaptwo_mode_rw_cvt(int mmode);
 
 /**
- * \brief Convert a mmaptwo mode text to a `CreateFile.`
+ * \brief Convert a mmaptwo mode character to a `CreateFile.`
  *   creation disposition.
- * \param mmode the value to convert
+ * \param mmode the character to convert
  * \return a `CreateFile.` creation disposition on success, zero otherwise
  */
 static DWORD mode_disposition_cvt(int mmode);
@@ -157,9 +200,9 @@ static DWORD mode_disposition_cvt(int mmode);
 /**
  * \brief Convert UTF-8 encoded text to UTF-16 LE text.
  * \param nm file name encoded in UTF-8
- * \param out output string
- * \param outlen output length
- * \return an errno code
+ * \param[out] out output string
+ * \param[out] outlen output length
+ * \return an `errno` code
  */
 static int mmaptwo_u8towc_shim
   (unsigned char const* nm, wchar_t* out, size_t* outlen);
@@ -190,17 +233,17 @@ static struct mmaptwo_i* mmaptwo_open_rest
 static size_t mmaptwo_file_size_e(HANDLE fd);
 
 /**
- * \brief Convert a mmaptwo mode text to a
+ * \brief Convert a mmaptwo mode character to a
  *   `CreateFileMapping.` protection flag.
- * \param mmode the value to convert
+ * \param mmode the character to convert
  * \return a `CreateFileMapping.` protection flag on success, zero otherwise
  */
 static DWORD mmaptwo_mode_prot_cvt(int mmode);
 
 /**
- * \brief Convert a mmaptwo mode text to a `MapViewOfFile`
+ * \brief Convert a mmaptwo mode tag to a `MapViewOfFile`
  *   desired access flag.
- * \param mmode the value to convert
+ * \param mt the tag to convert
  * \return a `MapViewOfFile` desired access flag on success, zero otherwise
  */
 static DWORD mmaptwo_mode_access_cvt(struct mmaptwo_mode_tag const mt);
@@ -254,7 +297,7 @@ static size_t mmaptwo_mmt_offset(struct mmaptwo_i const* m);
  * \brief Check the offset of the mapped area.
  * \param p page instance
  * \return the offset of the mapped region exposed by this interface,
- *   from start of mappable
+ *   from start of source mappable
  */
 static size_t mmaptwo_mmtp_offset(struct mmaptwo_page_i const* p);
 
@@ -623,7 +666,7 @@ int mmaptwo_u8towc_shim
       n += 2;
       p += 3;
     } else {
-      return EILSEQ; /* since beyond U+1FFFFF, no valid UTF-16 encoding */
+      return EILSEQ; /* since beyond U+10FFFF, no valid UTF-16 encoding */
     }
   }
   (*outlen) = n;
@@ -1151,6 +1194,6 @@ struct mmaptwo_i* mmaptwo_wopen
   /* no-op */
   return NULL;
 }
-#endif /*MMAPTWO_ON_UNIX*/
+#endif /*MMAPTWO_OS*/
 /* END   open functions */
 

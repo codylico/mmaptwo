@@ -35,15 +35,32 @@ enum mmaptwo_os {
  * \brief File memory access modes.
  */
 enum mmaptwo_mode {
+  /**
+   * \brief Open for reading only.
+   */
   mmaptwo_mode_read = 0x72,
+  /**
+   * \brief Open for reading and writing.
+   */
   mmaptwo_mode_write = 0x77,
+  /**
+   * \brief Map until end of file.
+   * \note When this parameter is active, the open functions
+   *   \link mmaptwo_open \endlink, \link mmaptwo_u8open \endlink and
+   *   \link mmaptwo_wopen \endlink will ignore the size parameter.
+   */
   mmaptwo_mode_end = 0x65,
+  /**
+   * \brief Make a private mapping.
+   * \note Changes in pages remain private to the process.
+   */
   mmaptwo_mode_private = 0x70,
 
   /**
+   * \brief Allow child processes to inherit this mapping.
    * \note If not using bequeath, the caller of
-   *   \link mmaptwo::open \endlink, \link mmaptwo::u8open \endlink or
-   *   \link mmaptwo::wopen \endlink must give time for the function
+   *   \link mmaptwo_open \endlink, \link mmaptwo_u8open \endlink or
+   *   \link mmaptwo_wopen \endlink must give time for the function
    *   to return. Otherwise, the file descriptor of the mapped file
    *   may leak.
    */
@@ -62,13 +79,13 @@ struct mmaptwo_page_i {
   /**
    * \brief Acquire a writable pointer to the space.
    * \param m map instance
-   * \return pointer to space on success, NULL otherwise
+   * \return pointer to space
    */
   void* (*mmtp_get)(struct mmaptwo_page_i* m);
   /**
    * \brief Acquire a pointer to the space.
    * \param m map instance
-   * \return pointer to space on success, NULL otherwise
+   * \return pointer to space
    */
   void const* (*mmtp_getconst)(struct mmaptwo_page_i const* m);
   /**
@@ -92,8 +109,9 @@ struct mmaptwo_page_i {
  */
 struct mmaptwo_i {
   /**
-   * \brief Destructor; closes the file and frees the space.
+   * \brief Destructor; closes the file.
    * \param m map instance
+   * \note The destructor will not free any acquired pages!
    */
   void (*mmt_dtor)(struct mmaptwo_i* m);
   /**
@@ -160,11 +178,19 @@ void mmaptwo_page_close(struct mmaptwo_page_i* p);
 
 /**
  * \brief Acquire a pointer to the space.
- * \param m page instance
- * \return pointer to space on success, NULL otherwise
+ * \param p page instance
+ * \return pointer to space
  */
 MMAPTWO_API
 void* mmaptwo_page_get(struct mmaptwo_page_i* p);
+
+/**
+ * \brief Acquire a pointer to the space.
+ * \param p page instance
+ * \return pointer to space
+ */
+MMAPTWO_API
+void const* mmaptwo_page_get_const(struct mmaptwo_page_i const* p);
 
 /**
  * \brief Check the length of the mapped area.
@@ -186,6 +212,7 @@ size_t mmaptwo_page_offset(struct mmaptwo_page_i const* p);
 /**
  * \brief Helper function closes the file.
  * \param m map instance
+ * \note The destructor will not free any acquired pages!
  */
 MMAPTWO_API
 void mmaptwo_close(struct mmaptwo_i* m);
@@ -195,14 +222,14 @@ void mmaptwo_close(struct mmaptwo_i* m);
  * \param m map instance
  * \param siz size of the map to acquire
  * \param off offset into the file data
- * \return pointer to locked space on success, NULL otherwise
+ * \return pointer to page interface on success, NULL otherwise
  */
 MMAPTWO_API
 struct mmaptwo_page_i* mmaptwo_acquire
   (struct mmaptwo_i* m, size_t siz, size_t off);
 
 /**
- * \brief Helper function to check the map instance of the space.
+ * \brief Helper function to check the length of the map instance.
  * \param m map instance
  * \return the length of the map instance
  */
@@ -227,7 +254,7 @@ size_t mmaptwo_offset(struct mmaptwo_i const* m);
  *   optionally followed by 'p' to make write changes private
  * \param sz size in bytes of region to provide for mapping
  * \param off file offset of region to provide for mapping
- * \return an interface on success, NULL otherwise
+ * \return an interface on success, `NULL` otherwise
  * \note On Windows, this function uses `CreateFileA` directly.
  * \note On Unix, this function uses the `open` system call directly.
  */
@@ -243,7 +270,7 @@ struct mmaptwo_i* mmaptwo_open
  *   optionally followed by 'p' to make write changes private
  * \param sz size in bytes of region to provide for mapping
  * \param off file offset of region to provide for mapping
- * \return an interface on success, NULL otherwise
+ * \return an interface on success, `NULL` otherwise
  * \note On Windows, this function re-encodes the `nm` parameter from
  *   UTF-8 to UTF-16, then uses `CreateFileW` on the result.
  * \note On Unix, this function uses the `open` system call directly.
@@ -260,7 +287,7 @@ struct mmaptwo_i* mmaptwo_u8open
  *   optionally followed by 'p' to make write changes private
  * \param sz size in bytes of region to provide for mapping
  * \param off file offset of region to provide for mapping
- * \return an interface on success, NULL otherwise
+ * \return an interface on success, `NULL` otherwise
  * \note On Windows, this function uses `CreateFileW` directly.
  * \note On Unix, this function translates the wide string
  *   to a multibyte character string, then passes the result to

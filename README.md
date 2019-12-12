@@ -1,5 +1,5 @@
-# mmapio
-The `mmapio` library aims to provide an API for interacting with files
+# mmaptwo
+The `mmaptwo` library aims to provide an API for interacting with files
 in memory.
 
 ## Goals
@@ -9,6 +9,9 @@ Unix and Windows. The target API language is C 89. In addition:
 - The API should provide a base interface for file accesses.
 
 - The interface should be simple and orthogonal.
+
+- The interface should allow for mapping a file multiple times
+  without needing to close the file between each mapping.
 
 - The source should not use more language features or libraries
   than necessary, and should not be larger (in lines of code)
