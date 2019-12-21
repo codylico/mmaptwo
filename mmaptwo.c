@@ -153,8 +153,6 @@ struct mmaptwo_win32 {
   struct mmaptwo_i base;
   /** \brief length of space, including unrequested leading bytes */
   size_t len;
-  /** \brief number of unrequested leading bytes. */
-  size_t shift;
   /** \brief file mapping handle */
   HANDLE fmd;
   /** \brief file handle */
@@ -839,7 +837,6 @@ struct mmaptwo_i* mmaptwo_open_rest
     out->len = fullsize;
     out->fd = fd;
     out->fmd = fmd;
-    out->shift = fullshift;
     out->offnum = off;
     out->mt = mt;
     out->base.mmt_dtor = &mmaptwo_mmt_dtor;
@@ -865,7 +862,7 @@ struct mmaptwo_page_i* mmaptwo_mmt_acquire
     return NULL;
   }
   /* repair input size and offset */{
-    size_t const shifted_len = mu->len - mu->shift;
+    size_t const shifted_len = mu->len - mu->offnum;
     if (pre_off > shifted_len
     ||  sz > shifted_len - pre_off
     ||  sz == 0u)
@@ -896,9 +893,6 @@ struct mmaptwo_page_i* mmaptwo_mmt_acquire
     } else {
       fulloff = off;
     }
-  }
-  /* adjust backward to file-mapping object */{
-    fulloff -= (mu->offnum - mu->shift);
   }
   ptr = MapViewOfFile(
       mu->fmd, /*hFileMappingObject*/
@@ -954,7 +948,7 @@ size_t mmaptwo_mmtp_offset(struct mmaptwo_page_i const* m) {
 
 size_t mmaptwo_mmt_length(struct mmaptwo_i const* m) {
   struct mmaptwo_win32* const mu = (struct mmaptwo_win32*)m;
-  return mu->len-mu->shift;
+  return mu->len-mu->offnum;
 }
 size_t mmaptwo_mmtp_length(struct mmaptwo_page_i const* m) {
   struct mmaptwo_page_win32* const mu = (struct mmaptwo_page_win32*)m;
