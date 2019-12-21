@@ -483,12 +483,12 @@ void mmaptwo_mmtp_dtor(struct mmaptwo_page_i* p) {
 
 void* mmaptwo_mmtp_get(struct mmaptwo_page_i* p) {
   struct mmaptwo_page_unix* const pu = (struct mmaptwo_page_unix*)p;
-  return pu->ptr+pu->shift;
+  return ((unsigned char*)pu->ptr)+pu->shift;
 }
 void const* mmaptwo_mmtp_getconst(struct mmaptwo_page_i const* p) {
   struct mmaptwo_page_unix const* const pu =
     (struct mmaptwo_page_unix const*)p;
-  return pu->ptr+pu->shift;
+  return ((unsigned char const*)pu->ptr)+pu->shift;
 }
 
 struct mmaptwo_page_i* mmaptwo_mmt_acquire
@@ -696,7 +696,8 @@ size_t mmaptwo_file_size_e(HANDLE fd) {
 #if (defined ULLONG_MAX)
     return (size_t)sz.QuadPart;
 #else
-    return (size_t)((sz.u.LowPart)|(sz.u.HighPart<<32));
+    return ((size_t)sz.u.LowPart)
+      |    (((size_t)sz.u.HighPart)<<32);
 #endif /*ULLONG_MAX*/
   } else return 0u;
 }
@@ -957,12 +958,12 @@ size_t mmaptwo_mmtp_length(struct mmaptwo_page_i const* m) {
 
 void* mmaptwo_mmtp_get(struct mmaptwo_page_i* p) {
   struct mmaptwo_page_win32* const pu = (struct mmaptwo_page_win32*)p;
-  return pu->ptr+pu->shift;
+  return ((unsigned char*)pu->ptr)+pu->shift;
 }
 void const* mmaptwo_mmtp_getconst(struct mmaptwo_page_i const* p) {
   struct mmaptwo_page_win32 const* const pu =
     (struct mmaptwo_page_win32 const*)p;
-  return pu->ptr+pu->shift;
+  return ((unsigned char const*)pu->ptr)+pu->shift;
 }
 #endif /*MMAPTWO_OS*/
 /* END   static functions */
