@@ -528,7 +528,10 @@ struct mmaptwo_page_i* mmaptwo_mmt_acquire
         errno = ERANGE;
         return NULL;
       } else fullsize += fullshift;
-    } else fulloff = (off_t)off;
+    } else {
+      fulloff = (off_t)off;
+      fullshift = 0u;
+    }
   }
   ptr = mmap(NULL, fullsize, mmaptwo_mode_prot_cvt(mu->mt.mode),
        mmaptwo_mode_flag_cvt(mu->mt.privy), mu->fd, fulloff);
@@ -793,6 +796,7 @@ struct mmaptwo_i* mmaptwo_open_rest
       }
     } else {
       fulloff = off;
+      fullshift = 0u;
       extended_size = sz;
     }
   }
@@ -893,6 +897,7 @@ struct mmaptwo_page_i* mmaptwo_mmt_acquire
       } else fullsize += fullshift;
     } else {
       fulloff = off;
+      fullshift = 0u;
     }
   }
   ptr = MapViewOfFile(
