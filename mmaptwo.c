@@ -13,7 +13,7 @@
 #endif /*MMAPTWO_MAX_CACHE*/
 
 /**
- * \brief Mode tag for mmaptwo interface, holding various
+ * \brief Mode tag for `mmaptwo` interface, holding various
  *   mapping configuration values.
  */
 struct mmaptwo_mode_tag {
@@ -28,9 +28,9 @@ struct mmaptwo_mode_tag {
 };
 
 /**
- * \brief Extract a mmaptwo mode tag from a mode text.
+ * \brief Extract a `mmaptwo` mode tag from a mode text.
  * \param mmode the text to parse
- * \return a mmaptwo mode tag
+ * \return a `mmaptwo` mode tag
  */
 static struct mmaptwo_mode_tag mmaptwo_mode_parse(char const* mmode);
 
@@ -63,7 +63,7 @@ static struct mmaptwo_mode_tag mmaptwo_mode_parse(char const* mmode);
 #  include <errno.h>
 
 /**
- * \brief File handler structure for POSIX mmaptwo implementation.
+ * \brief File handler structure for POSIX `mmaptwo` implementation.
  */
 struct mmaptwo_unix {
   /** \brief base structure */
@@ -79,7 +79,7 @@ struct mmaptwo_unix {
 };
 
 /**
- * \brief Page handler structure for POSIX mmaptwo implementation.
+ * \brief Page handler structure for POSIX `mmaptwo` implementation.
  */
 struct mmaptwo_page_unix {
   /** \brief base structure */
@@ -102,21 +102,22 @@ struct mmaptwo_page_unix {
 static char* mmaptwo_wctomb(wchar_t const* nm);
 
 /**
- * \brief Convert a mmaptwo mode character to a POSIX `open` flag.
+ * \brief Convert a `mmaptwo` mode character to a POSIX `open` flag.
  * \param mmode the character to convert
  * \return an `open` flag on success, zero otherwise
  */
 static int mmaptwo_mode_rw_cvt(int mmode);
 
 /**
- * \brief Convert a mmaptwo mode character to a POSIX `mmap` protection flag.
+ * \brief Convert a `mmaptwo` mode character to a POSIX `mmap`
+ *   protection flag.
  * \param mmode the character to convert
  * \return an `mmap` protection flag on success, zero otherwise
  */
 static int mmaptwo_mode_prot_cvt(int mmode);
 
 /**
- * \brief Convert a mmaptwo mode character to a POSIX `mmap` others' flag.
+ * \brief Convert a `mmaptwo` mode character to a POSIX `mmap` others' flag.
  * \param mprivy the private flag to convert
  * \return an `mmap` others' flag on success, zero otherwise
  */
@@ -151,7 +152,7 @@ static struct mmaptwo_i* mmaptwo_open_rest
 #  endif /*EILSEQ*/
 
 /**
- * \brief File handler structure for Win32 API mmaptwo implementation.
+ * \brief File handler structure for Win32 API `mmaptwo` implementation.
  */
 struct mmaptwo_win32 {
   /** \brief base structure */
@@ -169,7 +170,7 @@ struct mmaptwo_win32 {
 };
 
 /**
- * \brief Page handler structure for Win32 API mmaptwo implementation.
+ * \brief Page handler structure for Win32 API `mmaptwo` implementation.
  */
 struct mmaptwo_page_win32 {
   /** \brief base structure */
@@ -185,7 +186,7 @@ struct mmaptwo_page_win32 {
 };
 
 /**
- * \brief Convert a mmaptwo mode character to a `CreateFile.`
+ * \brief Convert a `mmaptwo` mode character to a `CreateFile.`
  *   desired access flag.
  * \param mmode the character to convert
  * \return an `CreateFile.` desired access flag on success, zero otherwise
@@ -193,7 +194,7 @@ struct mmaptwo_page_win32 {
 static DWORD mmaptwo_mode_rw_cvt(int mmode);
 
 /**
- * \brief Convert a mmaptwo mode character to a `CreateFile.`
+ * \brief Convert a `mmaptwo` mode character to a `CreateFile.`
  *   creation disposition.
  * \param mmode the character to convert
  * \return a `CreateFile.` creation disposition on success, zero otherwise
@@ -236,7 +237,7 @@ static struct mmaptwo_i* mmaptwo_open_rest
 static size_t mmaptwo_file_size_e(HANDLE fd);
 
 /**
- * \brief Convert a mmaptwo mode character to a
+ * \brief Convert a `mmaptwo` mode character to a
  *   `CreateFileMapping.` protection flag.
  * \param mmode the character to convert
  * \return a `CreateFileMapping.` protection flag on success, zero otherwise
@@ -244,7 +245,7 @@ static size_t mmaptwo_file_size_e(HANDLE fd);
 static DWORD mmaptwo_mode_prot_cvt(int mmode);
 
 /**
- * \brief Convert a mmaptwo mode tag to a `MapViewOfFile`
+ * \brief Convert a `mmaptwo` mode tag to a `MapViewOfFile`
  *   desired access flag.
  * \param mt the tag to convert
  * \return a `MapViewOfFile` desired access flag on success, zero otherwise
