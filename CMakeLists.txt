@@ -12,6 +12,10 @@ if (MMAPTWO_OS GREATER -1)
   target_compile_definitions(mmaptwo
     PRIVATE "MMAPTWO_OS=${MMAPTWO_OS}")
 endif (MMAPTWO_OS GREATER -1)
+if (WIN32 AND BUILD_SHARED_LIBS)
+  target_compile_definitions(mmaptwo
+    PUBLIC "MMAPTWO_WIN32_DLL")
+endif(WIN32 AND BUILD_SHARED_LIBS)
 
 if (BUILD_TESTING)
   add_executable(mmaptwo_dump "tests/dump.c")
