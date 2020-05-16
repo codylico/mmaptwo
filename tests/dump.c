@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <limits.h>
 #include <ctype.h>
+#include <string.h>
 
 int main(int argc, char **argv) {
   struct mmaptwo_i* mi;
@@ -18,11 +19,13 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
   fname = argv[1];
+  mmaptwo_set_errno(0);
   mi = mmaptwo_open(fname, argv[2],
     (size_t)strtoul(argv[3],NULL,0),
     (size_t)strtoul(argv[4],NULL,0));
   if (mi == NULL) {
-    fprintf(stderr, "failed to open file '%s'\n", fname);
+    fprintf(stderr, "failed to open file '%s':\n\t%s\n", fname,
+      strerror(mmaptwo_get_errno()));
     return EXIT_FAILURE;
   } else {
     size_t sub_len = (argc>5)
@@ -31,10 +34,12 @@ int main(int argc, char **argv) {
     size_t sub_off = (argc>6)
       ? (size_t)strtoul(argv[6],NULL,0)
       : 0;
+    mmaptwo_set_errno(0);
     pager = mmaptwo_acquire(mi, sub_len, sub_off);
   }
   if (pager == NULL) {
-    fprintf(stderr, "failed to map file '%s'\n", fname);
+    fprintf(stderr, "failed to map file '%s':\n\t%s\n", fname,
+      strerror(mmaptwo_get_errno()));
     mmaptwo_close(mi);
     return EXIT_FAILURE;
   } else {

@@ -138,6 +138,22 @@ struct mmaptwo_i {
   size_t (*mmt_offset)(struct mmaptwo_i const* m);
 };
 
+/* BEGIN error handling */
+/**
+ * \brief Get the `errno` value from this library.
+ * \return an error number
+ */
+MMAPTWO_API
+int mmaptwo_get_errno(void);
+
+/**
+ * \brief Set an `errno` value to this library.
+ * \param x the value to set
+ */
+MMAPTWO_API
+void mmaptwo_set_errno(int x);
+/* END   error handling */
+
 /* BEGIN configurations */
 /**
  * \brief Check the library's target backend.
