@@ -32,7 +32,7 @@ On UNIX, the commands would look like the following:
 ```
 mkdir build
 cd build
-cmake ../mmapio
+cmake ../mmaptwo
 ```
 
 Running CMake should create a build project, which then can be processed
