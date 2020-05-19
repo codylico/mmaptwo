@@ -540,7 +540,7 @@ struct mmaptwo_page_i* mmaptwo_mmt_acquire
   }
   ptr = mmap(NULL, fullsize, mmaptwo_mode_prot_cvt(mu->mt.mode),
        mmaptwo_mode_flag_cvt(mu->mt.privy), mu->fd, fulloff);
-  if (ptr == NULL) {
+  if (ptr == MAP_FAILED) {
     free(out);
     return NULL;
   }
