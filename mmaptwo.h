@@ -1,4 +1,4 @@
-/*
+/**
  * \file mmaptwo.h
  * \brief Memory-mapped files
  * \author Cody Licorish (svgmovement@gmail.com)
@@ -138,7 +138,7 @@ struct mmaptwo_i {
   size_t (*mmt_offset)(struct mmaptwo_i const* m);
 };
 
-/* BEGIN error handling */
+#pragma region "error handling"
 /**
  * \brief Get the `errno` value from this library.
  * \return an error number
@@ -152,9 +152,9 @@ int mmaptwo_get_errno(void);
  */
 MMAPTWO_API
 void mmaptwo_set_errno(int x);
-/* END   error handling */
+#pragma endregion
 
-/* BEGIN configurations */
+#pragma region "configurations"
 /**
  * \brief Check the library's target backend.
  * \return a \link mmaptwo_os \endlink value
@@ -180,9 +180,9 @@ int mmaptwo_check_bequeath_stop(void);
  */
 MMAPTWO_API
 size_t mmaptwo_get_page_size(void);
-/* END   configurations */
+#pragma endregion
 
-/* BEGIN helper functions */
+#pragma region "helper functions"
 /**
  * \brief Closes the page and frees the space.
  * \param p page instance
@@ -259,9 +259,9 @@ size_t mmaptwo_length(struct mmaptwo_i const* m);
  */
 MMAPTWO_API
 size_t mmaptwo_offset(struct mmaptwo_i const* m);
-/* END   helper functions */
+#pragma endregion
 
-/* BEGIN open functions */
+#pragma region "open functions"
 /**
  * \brief Open a file using a narrow character name.
  * \param nm name of file to map
@@ -312,7 +312,7 @@ struct mmaptwo_i* mmaptwo_u8open
 MMAPTWO_API
 struct mmaptwo_i* mmaptwo_wopen
   (wchar_t const* nm, char const* mode, size_t sz, size_t off);
-/* END   open functions */
+#pragma endregion
 
 #ifdef __cplusplus
 };
