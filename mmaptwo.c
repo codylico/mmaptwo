@@ -319,7 +319,7 @@ static void* mmaptwo_mmtp_get(struct mmaptwo_page_i* p);
 static void const* mmaptwo_mmtp_getconst(struct mmaptwo_page_i const* p);
 
 
-/* BEGIN static functions */
+#pragma region "static functions"
 struct mmaptwo_mode_tag mmaptwo_mode_parse(char const* mmode) {
   struct mmaptwo_mode_tag out = { 0, 0, 0, 0 };
   int i;
@@ -983,9 +983,9 @@ void const* mmaptwo_mmtp_getconst(struct mmaptwo_page_i const* p) {
   return ((unsigned char const*)pu->ptr)+pu->shift;
 }
 #endif /*MMAPTWO_OS*/
-/* END   static functions */
+#pragma endregion
 
-/* BEGIN error handling */
+#pragma region "error handling"
 int mmaptwo_get_errno(void) {
   return errno;
 }
@@ -994,9 +994,9 @@ void mmaptwo_set_errno(int x) {
   errno = x;
   return;
 }
-/* END   error handling */
+#pragma endregion
 
-/* BEGIN configuration functions */
+#pragma region "configuration functions"
 int mmaptwo_get_os(void) {
   return (int)(MMAPTWO_OS);
 }
@@ -1026,9 +1026,9 @@ size_t mmaptwo_get_page_size(void) {
   return 1;
 #endif /*MMAPTWO_OS*/
 }
-/* END   configuration functions */
+#pragma endregion
 
-/* BEGIN helper functions */
+#pragma region "helper functions"
 void mmaptwo_page_close(struct mmaptwo_page_i* p) {
   if (p != NULL) {
     (*p).mmtp_dtor(p);
@@ -1072,9 +1072,9 @@ size_t mmaptwo_length(struct mmaptwo_i const* m) {
 size_t mmaptwo_offset(struct mmaptwo_i const* m) {
   return (*m).mmt_offset(m);
 }
-/* END   helper functions */
+#pragma endregion
 
-/* BEGIN open functions */
+#pragma region "open functions"
 #if MMAPTWO_OS == MMAPTWO_OS_UNIX
 struct mmaptwo_i* mmaptwo_open
   (char const* nm, char const* mode, size_t sz, size_t off)
@@ -1218,5 +1218,5 @@ struct mmaptwo_i* mmaptwo_wopen
   return NULL;
 }
 #endif /*MMAPTWO_OS*/
-/* END   open functions */
+#pragma endregion
 
